@@ -18,14 +18,11 @@ package gopcapreader
 
 import (
 	"bufio"
-	"flag"
 	pcap "github.com/akrennmair/gopcap"
 	"io"
 	"sync"
 	"time"
 )
-
-var maxStreams *int = flag.Int("max_streams", 1000, "Max number of streams to have at once")
 
 type streamReader interface {
 	Read([]byte) (int, error)
@@ -140,10 +137,12 @@ type Multiplexer struct {
 	// default.
 	GarbageCollectMaxStreams int
 	readCreator              StreamHandler
-	// Incremented whenever a new packet is processed.
+	// Statistics.  Shouldn't be set by user, but can be read.
+	BytesProcessed                  int
 	PacketsProcessed                int
 	PacketDecodeFailures            int
 	PacketsDroppedPrimaryBufferFull int
+	StreamsGarbageCollected         int
 	// Waits for streams to finish.
 	closeWaiter sync.WaitGroup
 }
@@ -202,6 +201,7 @@ func (m *Multiplexer) run() {
 			continue
 		}
 		m.PacketsProcessed++
+		m.BytesProcessed += len(pcapPacket.Payload)
 		d := p.asData()
 		// Discard uninteresting packets
 		if d.IsFirst || d.IsLast || d.Start != d.Limit {
@@ -219,7 +219,7 @@ func (m *Multiplexer) run() {
 			stream.handleData(d)
 		}
 		// Garbage collect if we have to many packets
-		if len(m.streams) > *maxStreams {
+		if len(m.streams) > m.GarbageCollectMaxStreams {
 			m.garbageCollect()
 		}
 	}
@@ -311,6 +311,7 @@ func (m *Multiplexer) garbageCollect() {
 		}
 	}
 	for _, k := range keysToDiscard {
+		m.StreamsGarbageCollected++
 		delete(m.streams, k)
 	}
 	gplog(logWarning, "Garbage collected at cutoff", cutoff, time.Now().Sub(cutoff),
