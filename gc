@@ -1,0 +1,14 @@
+#!/bin/bash
+
+set -e
+
+echo "FORMATTING"
+go fmt . ./...
+
+echo "BUILDING"
+go get . ./...
+
+echo "RUNNING TESTS"
+go test . ./...
+
+git commit -a
