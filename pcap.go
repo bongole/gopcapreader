@@ -152,8 +152,8 @@ func (p *TcpPacket) TcpKey() (TcpKey, error) {
 // streams and processing those streams with its stream handler.  If 'packets'
 // is given and > 0, will return after that many packets have been processed.
 // Otherwise runs forever.
-func (m *Multiplexer) MultiplexPcap(pcap_handle *pcap.Pcap, packets int) {
-	count := 0
+func (m *Multiplexer) MultiplexPcap(pcap_handle *pcap.Pcap, packets int64) {
+	count := int64(0)
 	start := time.Now()
 	defer func() {
 		gplog(logError, "Dropped", m.PacketsDroppedPrimaryBufferFull,
@@ -163,8 +163,10 @@ func (m *Multiplexer) MultiplexPcap(pcap_handle *pcap.Pcap, packets int) {
 			float64(count-m.PacketsDroppedPrimaryBufferFull)/runTime,
 			"packets per second")
 	}()
+	if packets > 0 {
+		gplog(logError, "Processing", packets, "packets in MultiplexPcap")
+	}
 	for pkt := pcap_handle.Next(); ; pkt = pcap_handle.Next() {
-		count++
 		if packets > 0 && count >= packets {
 			gplog(logError, "Count exceeds requested packets, returning from multiplexer")
 			return
@@ -181,5 +183,6 @@ func (m *Multiplexer) MultiplexPcap(pcap_handle *pcap.Pcap, packets int) {
 		default:
 			m.PacketsDroppedPrimaryBufferFull++
 		}
+		count++
 	}
 }

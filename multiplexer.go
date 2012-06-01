@@ -138,11 +138,11 @@ type Multiplexer struct {
 	GarbageCollectMaxStreams int
 	readCreator              StreamHandler
 	// Statistics.  Shouldn't be set by user, but can be read.
-	BytesProcessed                  int
-	PacketsProcessed                int
-	PacketDecodeFailures            int
-	PacketsDroppedPrimaryBufferFull int
-	StreamsGarbageCollected         int
+	BytesProcessed                  int64
+	PacketsProcessed                int64
+	PacketDecodeFailures            int64
+	PacketsDroppedPrimaryBufferFull int64
+	StreamsGarbageCollected         int64
 	// Waits for streams to finish.
 	closeWaiter sync.WaitGroup
 }
@@ -195,13 +195,13 @@ func NewMultiplexer(creator StreamHandler) *Multiplexer {
 func (m *Multiplexer) run() {
 	defer m.closeWaiter.Done()
 	for pcapPacket := range m.packets {
+		m.PacketsProcessed++
+		m.BytesProcessed += int64(len(pcapPacket.Data))
 		p, err := NewTcpPacket(pcapPacket)
 		if err != nil {
 			m.PacketDecodeFailures++
 			continue
 		}
-		m.PacketsProcessed++
-		m.BytesProcessed += len(pcapPacket.Payload)
 		d := p.asData()
 		// Discard uninteresting packets
 		if d.IsFirst || d.IsLast || d.Start != d.Limit {
