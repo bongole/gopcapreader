@@ -19,7 +19,7 @@ package gopcapreader
 import (
 	"errors"
 	"fmt"
-	pcap "github.com/akrennmair/gopcap"
+	"github.com/miekg/pcap"
 	"net"
 	"time"
 )
@@ -166,7 +166,10 @@ func (m *Multiplexer) MultiplexPcap(pcap_handle *pcap.Pcap, packets int64) {
 	if packets > 0 {
 		gplog(logError, "Processing", packets, "packets in MultiplexPcap")
 	}
-	for pkt := pcap_handle.Next(); ; pkt = pcap_handle.Next() {
+	for pkt, r := pcap_handle.NextEx(); ; pkt, r = pcap_handle.NextEx() {
+		if r == 0 {
+			continue
+		}
 		if packets > 0 && count >= packets {
 			gplog(logError, "Count exceeds requested packets, returning from multiplexer")
 			return

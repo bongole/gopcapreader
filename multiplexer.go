@@ -18,7 +18,7 @@ package gopcapreader
 
 import (
 	"bufio"
-	pcap "github.com/akrennmair/gopcap"
+	"github.com/miekg/pcap"
 	"io"
 	"sync"
 	"time"
